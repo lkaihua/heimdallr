@@ -25,7 +25,7 @@
 
         var number = 0;
         var socket = null;
-        var serverAddr = 'ws://127.0.0.1:8000/';
+        var serverAddr = 'ws://192.168.2.11:8000/';
 
         function selectroom() {
             number = document.getElementById('url').value;
@@ -167,10 +167,8 @@
 
 <div class="titleArea">
     <h1> Heimdallr chat client sample</h1>
-
     <p> Enter a room number:<input class="title" id="url" type="text" value="" autocomplete="off">
-        <button name="url" type="submit" value="submit-true" onclick="selectroom()">방 조인</button>
-
+        <button name="url" type="submit" value="submit-true" onclick="selectroom()">go into room</button>
     </p>
 
     <p> Enter a name :<input class="usernameInput" id="name" type="text" value="" autocomplete="off">

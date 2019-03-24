@@ -39,7 +39,7 @@ class HealthyService extends WebServiceActor {
   override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
     log.info( "Restarting Health Service ..." )
     preStart()
-  }
+}
 
   override def postRestart(reason: Throwable): Unit = {
     log.info( "Health Service has restarted." )

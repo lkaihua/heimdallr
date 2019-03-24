@@ -48,7 +48,9 @@ class ChatSupervisor(envType: String) extends Actor with ActorLogging {
         super.supervisorStrategy.decider.applyOrElse( t, (_:Any) => Escalate )
     }
 
-  override def preStart(): Unit = {}
+  override def preStart(): Unit = {
+    log.info("ChatSupervisor started")
+  }
 
   override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
     log.info( reason.toString )

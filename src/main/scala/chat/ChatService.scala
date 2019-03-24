@@ -25,10 +25,10 @@ import akka.actor.SupervisorStrategy._
 import akka.NotUsed
 import akka.pattern.ask
 import akka.util.Timeout
+
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits._
-
+//import scala.concurrent.ExecutionContext.Implicits._
 import java.net._
 import EventConstants._
 
@@ -39,12 +39,12 @@ import EventConstants._
 class ChatService(chatSuper: ActorRef) extends WebServiceActor {
   val servicePort = 8000
   val serviceRoute= //<- adjustable depended on client url
-    pathPrefix(IntNumber) {
-      chatRoomID => {
-        chatSuper ! CreateChatRoom(chatRoomID)
-        handleWebSocketMessages(newUser(chatRoomID))
+      pathPrefix(IntNumber) {
+        chatRoomID => {
+          chatSuper ! CreateChatRoom(chatRoomID)
+          handleWebSocketMessages(newUser(chatRoomID))
+        }
       }
-    }
 
   def RegNode(port: Int):Unit = {
     val localhost = InetAddress.getLocalHost
@@ -63,6 +63,7 @@ class ChatService(chatSuper: ActorRef) extends WebServiceActor {
 
       // PoisonPill asynchronously stops disconnected user actor
       //TODO : to deal with join, leave, text message types
+      //case _ => UserActor.IncomingMessage("")
     }.to(Sink.actorRef[UserActor.IncomingMessage](userActor, PoisonPill))
   }
 
@@ -74,12 +75,15 @@ class ChatService(chatSuper: ActorRef) extends WebServiceActor {
         NotUsed
       }.map(
       // transform domain message to web socket message
-      (outMsg: UserActor.OutgoingMessage) => TextMessage(outMsg.text))
+      (outMsg: UserActor.OutgoingMessage) =>
+        TextMessage(outMsg.text)
+    )
   }
 
   def newUser(chatRoomID: Int): Flow[Message, Message, NotUsed] = {
     // new connection - new user actor
-    val userActor = context.actorOf(Props(new UserActor(chatRoomID, chatSuper)))
+//    val userActor = context.actorOf(Props(new UserActor(chatRoomID, chatSuper))) // ?? create a new...
+    val userActor = context.actorOf(Props(classOf[UserActor], chatRoomID, chatSuper))
 
     // Set Sink & Source
     val incomingMsg = IncomingMessages(userActor)

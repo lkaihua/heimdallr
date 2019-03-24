@@ -15,19 +15,18 @@
  * limitations under the License.
  */
 
-scalaVersion := "2.11.8"
-val akkaVersion = "2.5.16"
-val akkaHTTPVersion = "10.1.4"
+scalaVersion := "2.12.8"
+val akkaVersion = "2.5.21"
+val akkaHTTPVersion = "10.1.7"
 val akka = "com.typesafe.akka"
 
 libraryDependencies ++= Seq(
   akka %% "akka-actor" % akkaVersion,
   akka %% "akka-stream" % akkaVersion,
   akka %% "akka-http-core" % akkaHTTPVersion,
-
-  akka %% "akka-http-experimental" % "2.4.4",
-  "com.typesafe.scala-logging" % "scala-logging-slf4j_2.11" % "2.1.2",
-  akka % "akka-slf4j_2.11" % "2.4.1",
+  akka %% "akka-http" % akkaHTTPVersion,
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
+  akka % "akka-slf4j_2.12" % "2.4.12",
   "net.debasishg" %% "redisclient" % "3.8",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % Runtime,
   "io.spray" %%  "spray-json" % "1.3.4",

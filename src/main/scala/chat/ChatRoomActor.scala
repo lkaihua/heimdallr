@@ -116,23 +116,21 @@ class ChatRoomActor(chatRoomID: Int, envType: String) extends Actor with ActorLo
   }
 
   def subscribe(): Unit = {
-    s.subscribe(chatRoomName) { pubsub =>
-      pubsub match {
-        case S(channel, no) => log.info("subscribed to " + channel + " and count = " + no)
-        case U(channel, no) => log.info("unsubscribed from " + channel + " and count = " + no)
-        case E(exception) =>
-          p.disconnect
-          s.disconnect
-          if (exception.toString.equals("com.redis.RedisConnectionException: Connection dropped ..")) {
-            log.error(exception + ", #1 Fatal error caught at Redis subscribe(). :" + chatRoomName)
-            connectToRedis()
-          } else {
-            log.error(exception + ", #2 Fatal error caught at Redis subscribe(). :" + chatRoomName)
-          }
+    s.subscribe(chatRoomName) {
+      case S(channel, no) => log.info("subscribed to " + channel + " and count = " + no)
+      case U(channel, no) => log.info("unsubscribed from " + channel + " and count = " + no)
+      case E(exception) =>
+        p.disconnect
+        s.disconnect
+        if (exception.toString.equals("com.redis.RedisConnectionException: Connection dropped ..")) {
+          log.error(exception + ", #1 Fatal error caught at Redis subscribe(). :" + chatRoomName)
+          connectToRedis()
+        } else {
+          log.error(exception + ", #2 Fatal error caught at Redis subscribe(). :" + chatRoomName)
+        }
 
-        case M(channel, msg) =>
-          broadcast(msg)
-      }
+      case M(channel, msg) =>
+        broadcast(msg)
     }
   }
 
