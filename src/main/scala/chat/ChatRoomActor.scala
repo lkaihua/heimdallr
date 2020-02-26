@@ -20,15 +20,12 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor._
 import akka.pattern.gracefulStop
-import com.redis.{E, M, PubSubMessage, RedisClient, S, U}
-import com.redis.RedisClient
-import com.typesafe.config.ConfigFactory
+import chat.EventConstants._
+import com.redis._
+
 import scala.concurrent.ExecutionContext
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
-import chat.ChatRooms.UserInfo
-import EventConstants._
+import scala.util.{Failure, Success, Try}
 
 object ChatRoomActor {
   case object Join
@@ -64,8 +61,9 @@ class ChatRoomActor(chatRoomID: Int, envType: String) extends Actor with ActorLo
   val recvTimeout = system.settings.config.getInt(s"akka.environment.${envType}.chatroom-receive-timeout")
   val redisIp = system.settings.config.getString(s"akka.environment.${envType}.redis-ip")
   val redisPort = system.settings.config.getInt(s"akka.environment.${envType}.redis-port")
-  var s = new RedisClient(redisIp, redisPort)
-  var p = new RedisClient(redisIp, redisPort)
+  var s = safeConnect(redisIp, redisPort)
+  var p = safeConnect(redisIp, redisPort)
+//  var p = new RedisClient(redisIp, redisPort)
 
   import ChatRoomActor._
   private var failover: Boolean = true
@@ -82,32 +80,64 @@ class ChatRoomActor(chatRoomID: Int, envType: String) extends Actor with ActorLo
     }
   }
 
+  def safeConnect(redisIp:String, redisPort:Int): Try[RedisClient] = {
+    try {
+      Success(new RedisClient(redisIp, redisPort))
+    } catch {
+      case x: Exception =>
+        log.info("Can NOT connect to redis. It caused by " + x.toString)
+        Failure(x)
+    }
+  }
   /**
     * This function is used for connect to redis. If redis is dead, we'll retry until redis is up.
     */
   def connectToRedis(): Unit = {
     if (failover) {
-      try {
-        if (!s.connected) {
-          s = new RedisClient(redisIp, redisPort)
-        }
-        if (!p.connected) {
-          p = new RedisClient(redisIp, redisPort)
-        }
+//      try {
+//        if (!s.connected) {
+//          rt)
+//        }s = new RedisClient(redisIp, redisPo
+//        if (!p.connected) {
+//          p = new RedisClient(redisIp, redisPort)
+//        }
+//
+//        subscribe()
+//      } catch {
+//        case x: Exception =>
+//          log.info("Retry to connect redis. It caused by " + x)
+//          connectToRedis()
+//      } finally {
+//        log.info("## Redis connection has established.")
+//      }
 
-        subscribe()
-      } catch {
-        case x: Exception =>
-          log.info("Retry to connect redis. It caused by " + x)
-          connectToRedis()
-      } finally {
-        log.info("## Redis connection has established.")
+      s match {
+        case Success(redisClient) if !redisClient.connected =>
+          s = safeConnect(redisIp, redisPort)
+        case _ => log.info("Sub redis is not connected")
       }
+      p match {
+        case Success(redisClient) if !redisClient.connected =>
+          p = safeConnect(redisIp, redisPort)
+        case _ => log.info("Pub redis is not connected")
+      }
+      if (s.isFailure || p.isFailure) {
+        log.info(s"Retry to connect redis. It caused by sub failure=${s.isFailure} or pub failure=${p.isFailure}")
+        // need reconnection times control and retries
+//         connectToRedis()
+        throw new Exception("Redis connection failure")
+      }
+      else {
+        subscribe(s.get, p.get)
+        log.info("Redis connection established.")
+      }
+
     } else {
-      if (p.connected && s.connected) {
+//      if (p.connected && s.connected) {
+      if (p.isSuccess && p.get.connected && s.isSuccess && s.get.connected) {
         //s.unsubscribe(chatRoomName)
-        p.disconnect
-        s.disconnect
+        p.get.disconnect
+        s.get.disconnect
         log.info(s"[#$chatRoomID] Retry, Redis Disconnected.")
       } else {
         log.info(s"[#$chatRoomID]  => Redis Disconnected.")
@@ -115,7 +145,7 @@ class ChatRoomActor(chatRoomID: Int, envType: String) extends Actor with ActorLo
     }
   }
 
-  def subscribe(): Unit = {
+  def subscribe(s:RedisClient, p:RedisClient): Unit = {
     s.subscribe(chatRoomName) {
       case S(channel, no) => log.info("subscribed to " + channel + " and count = " + no)
       case U(channel, no) => log.info("unsubscribed from " + channel + " and count = " + no)
@@ -193,8 +223,8 @@ class ChatRoomActor(chatRoomID: Int, envType: String) extends Actor with ActorLo
 
   def destroyChatRoom():Unit = {
     failover = false
-    p.disconnect
-    s.disconnect
+    p.get.disconnect
+    s.get.disconnect
 
     ChatRooms.removeChatRoom(chatRoomID)
     environment.aggregator ! RemoveChatRoom(chatRoomID)
@@ -246,8 +276,8 @@ class ChatRoomActor(chatRoomID: Int, envType: String) extends Actor with ActorLo
       log.info(s"messageLog ${msg.message}")
 
       // original message should be logged
-      if (p.connected && s.connected)
-        p.publish(chatRoomName, msg.message)
+      if (p.get.connected && s.get.connected)
+        p.get.publish(chatRoomName, msg.message)
 
     case Terminated(user) => // for UserActor
       log.info(s"[#$chatRoomID] receive Terminated Event:" + chatRoomName)

@@ -16,17 +16,12 @@
  */
 package chat
 
-import akka.actor._
 import akka.actor.SupervisorStrategy._
-import scala.concurrent.duration._
+import akka.actor._
+import chat.EventConstants._
+
 import scala.concurrent.ExecutionContext
-import scala.collection.mutable.ListBuffer
-import org.json4s._
-import org.json4s.{DefaultFormats, JValue}
-import org.json4s.jackson.JsonMethods._
-import org.json4s.jackson.Serialization.{read, write}
-import java.util.concurrent.TimeUnit
-import EventConstants._
+import scala.concurrent.duration._
 
 /**
   * Parent actor of multiple chatroom actors.
@@ -90,7 +85,9 @@ class ChatSupervisor(envType: String) extends Actor with ActorLogging {
     */
   def createNewChatRoom(number: Int): ActorRef = {
     //creates new ChatRoomActor and returns as an ActorRef
-    val chatroom = context.actorOf(Props(new ChatRoomActor(number, envType)), s"${number}")
+    log.info(s"createNewChatRoom $number")
+
+    val chatroom = context.actorOf(Props(classOf[ChatRoomActor], number, envType), s"chatroom${number}")
     ChatRooms.chatRooms += number -> chatroom
     chatroom
   }
@@ -100,6 +97,7 @@ class ChatSupervisor(envType: String) extends Actor with ActorLogging {
       setNodeInfor(hostName, port)
 
     case CreateChatRoom(chatRoomID) =>
+      log.info(s"CreateChatRoom $chatRoomID")
       getChatRoomActorRef(chatRoomID)
 
     case RegChatUser(chatRoomID, userActor) =>

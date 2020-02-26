@@ -16,16 +16,14 @@
  */
 package chat
 
-import akka.actor._
 import java.util.concurrent.TimeUnit
+
+import akka.actor._
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
-import scala.concurrent.Await
-import scala.concurrent.duration._
 //import scala.concurrent.ExecutionContext.Implicits._
-import akka.pattern.ask
-import akka.util.Timeout
-import EventConstants._
+import chat.EventConstants._
 
 object UserActor {
   case class Connected(outgoing: ActorRef)
@@ -52,6 +50,7 @@ class UserActor(chatRoomID: Int, chatSuper: ActorRef) extends Actor with ActorLo
 
   override def preStart(): Unit = {
     chatRoom = ChatRooms.chatRooms.getOrElse(chatRoomID, null)
+    log.info(s"chatRoomID: $chatRoomID")
     if (chatRoom == null) {
       chatSuper ! RegChatUser(chatRoomID, self)
       log.info(s"[#$chatRoomID] gets a ChatRoomActorRef for UserActor" )
